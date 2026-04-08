@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VeggieLens — Vegetable Identifier</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --green-deep:   #1a3a2a;
+    --green-mid:    #2d6a4f;
+    --green-light:  #52b788;
+    --green-pale:   #d8f3dc;
+    --cream:        #faf9f4;
+    --cream-dark:   #f0ede3;
+    --text:         #1a2e1e;
+    --text-muted:   #6b7c6e;
+    --border:       #d4e6d8;
+    --white:        #ffffff;
+    --shadow-sm:    0 2px 8px rgba(26,58,42,0.08);
+    --shadow-md:    0 8px 32px rgba(26,58,42,0.12);
+    --shadow-lg:    0 20px 60px rgba(26,58,42,0.16);
+    --radius:       16px;
+    --radius-sm:    10px;
+    --sans: 'DM Sans', sans-serif;
+    --mono: 'DM Mono', monospace;
+  }
+
+  body {
+    font-family: var(--sans);
+    background: var(--cream);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Background texture ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 10% 20%, rgba(82,183,136,0.08) 0%, transparent 50%),
+      radial-gradient(ellipse at 90% 80%, rgba(45,106,79,0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 50%, rgba(216,243,220,0.4) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Decorative leaf shapes ── */
+  .leaf-deco {
+    position: fixed;
+    opacity: 0.04;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .leaf-deco.tl {
+    top: -80px; left: -80px;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, var(--green-mid) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  .leaf-deco.br {
+    bottom: -100px; right: -100px;
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, var(--green-light) 0%, transparent 70%);
+    border-radius: 50%;
+    opacity: 0.06;
+  }
+
+  /* ── Layout ── */
+  .page {
+    position: relative;
+    z-index: 1;
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 4rem;
+  }
+
+  /* ── Header ── */
+  header {
+    text-align: center;
+    margin-bottom: 3.5rem;
+    animation: fadeDown 0.6s ease both;
+  }
+  .logo-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--green-deep);
+    color: var(--green-pale);
+    padding: 0.4rem 1rem;
+    border-radius: 100px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 1.2rem;
+  }
+  .logo-badge span { font-size: 1rem; }
+  header h1 {
+    font-family: var(--sans);
+    font-size: clamp(2.2rem, 5vw, 3.5rem);
+    font-weight: 700;
+    color: var(--green-deep);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.75rem;
+  }
+  header h1 em {
+    font-style: italic;
+    color: var(--green-mid);
+  }
+  header p {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    font-weight: 300;
+    max-width: 480px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+
+  /* ── Main card ── */
+  .card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+    animation: fadeUp 0.6s ease 0.1s both;
+  }
+
+  /* ── Upload zone ── */
+  .upload-zone {
+    padding: 2.5rem 2rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .drop-area {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 3rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    background: var(--cream);
+    position: relative;
+  }
+  .drop-area:hover, .drop-area.dragover {
+    border-color: var(--green-light);
+    background: var(--green-pale);
+    transform: scale(1.005);
+  }
+  .drop-area input[type=file] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+  .drop-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    display: block;
+    transition: transform 0.3s ease;
+  }
+  .drop-area:hover .drop-icon { transform: scale(1.1) rotate(-5deg); }
+  .drop-title {
+    font-family: var(--sans);
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--green-deep);
+    margin-bottom: 0.4rem;
+  }
+  .drop-sub {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-weight: 300;
+  }
+
+  /* ── Preview ── */
+  .preview-wrap {
+    display: none;
+    position: relative;
+    margin-top: 1.25rem;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    border: 1px solid var(--border);
+    background: var(--cream-dark);
+  }
+  .preview-wrap.visible { display: block; animation: fadeUp 0.3s ease; }
+  .preview-wrap img {
+    width: 100%;
+    max-height: 300px;
+    object-fit: contain;
+    display: block;
+  }
+  .preview-change {
+    position: absolute;
+    top: 0.75rem; right: 0.75rem;
+    background: rgba(26,58,42,0.75);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0.3rem 0.7rem;
+    font-size: 0.75rem;
+    font-family: var(--mono);
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+    transition: background 0.15s;
+  }
+  .preview-change:hover { background: var(--green-deep); }
+
+  /* ── Predict button ── */
+  .predict-btn {
+    display: block;
+    width: 100%;
+    margin-top: 1.25rem;
+    padding: 1rem;
+    background: var(--green-deep);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: var(--mono);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+    transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+    box-shadow: 0 4px 16px rgba(26,58,42,0.25);
+  }
+  .predict-btn:hover:not(:disabled) {
+    background: var(--green-mid);
+    box-shadow: 0 6px 24px rgba(26,58,42,0.3);
+  }
+  .predict-btn:active:not(:disabled) { transform: scale(0.99); }
+  .predict-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+  /* ── Supported classes chips ── */
+  .classes-section {
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--cream);
+  }
+  .classes-title {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+  }
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+  .chip {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    font-weight: 400;
+    transition: all 0.2s;
+  }
+  .chip:hover {
+    border-color: var(--green-light);
+    color: var(--green-mid);
+    background: var(--green-pale);
+  }
+
+  /* ── Result section ── */
+  .result-section {
+    display: none;
+    padding: 2.5rem 2rem;
+    animation: fadeUp 0.4s ease;
+  }
+  .result-section.visible { display: block; }
+
+  /* ── Hero result ── */
+  .result-hero {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+  }
+  .result-emoji-wrap {
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    flex-shrink: 0;
+    box-shadow: var(--shadow-sm);
+  }
+  .result-name {
+    font-family: var(--mono);
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--green-deep);
+    letter-spacing: -0.02em;
+    line-height: 1;
+    margin-bottom: 0.4rem;
+  }
+  .result-conf {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-weight: 400;
+  }
+  .conf-pill {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    border-radius: 100px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    margin-left: 0.5rem;
+  }
+
+  /* ── Confidence bar ── */
+  .conf-bar-wrap {
+    height: 6px;
+    background: var(--cream-dark);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 0.5rem;
+    width: 180px;
+  }
+  .conf-bar {
+    height: 100%;
+    border-radius: 10px;
+    transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  /* ── Info grid ── */
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  @media (max-width: 540px) { .info-grid { grid-template-columns: 1fr; } }
+
+  .info-card {
+    background: var(--cream);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 1rem 1.25rem;
+  }
+  .info-card-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 0.4rem;
+  }
+  .info-card-value {
+    font-size: 0.9rem;
+    color: var(--text);
+    line-height: 1.5;
+    font-weight: 400;
+  }
+  .info-card.full { grid-column: 1 / -1; }
+
+  /* ── Top 3 alternatives ── */
+  .top3-title {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+  }
+  .top3-list { display: flex; flex-direction: column; gap: 0.5rem; }
+  .top3-row {
+    display: grid;
+    grid-template-columns: 140px 1fr 48px;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .top3-name { font-size: 0.85rem; color: var(--text); font-weight: 500; }
+  .top3-bar-wrap {
+    height: 8px;
+    background: var(--cream-dark);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .top3-bar { height: 100%; border-radius: 10px; transition: width 0.8s ease; }
+  .top3-pct {
+    font-size: 0.75rem;
+    font-family: var(--mono);
+    color: var(--text-muted);
+    text-align: right;
+    font-weight: 500;
+  }
+
+  /* ── Reset button ── */
+  .reset-btn {
+    display: block;
+    width: 100%;
+    margin-top: 1.5rem;
+    padding: 0.75rem;
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: var(--mono);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .reset-btn:hover {
+    border-color: var(--green-light);
+    color: var(--green-mid);
+    background: var(--green-pale);
+  }
+
+  /* ── Error ── */
+  .error-box {
+    display: none;
+    margin-top: 1rem;
+    padding: 0.875rem 1rem;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    color: #dc2626;
+  }
+  .error-box.visible { display: block; animation: fadeUp 0.3s ease; }
+
+  /* ── Loading overlay ── */
+  .loading-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(250,249,244,0.85);
+    backdrop-filter: blur(4px);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .loading-overlay.visible { display: flex; }
+  .spinner-leaf {
+    width: 56px; height: 56px;
+    border: 3px solid var(--green-pale);
+    border-top-color: var(--green-mid);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  .loading-text {
+    font-family: var(--sans);
+    font-size: 1.1rem;
+    color: var(--green-deep);
+    font-style: italic;
+  }
+
+  /* ── Footer ── */
+  footer {
+    text-align: center;
+    margin-top: 2.5rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 300;
+    animation: fadeUp 0.6s ease 0.3s both;
+  }
+
+  /* ── Animations ── */
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="leaf-deco tl"></div>
+<div class="leaf-deco br"></div>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner-leaf"></div>
+  <div class="loading-text">Identifying your vegetable…</div>
+</div>
+
+<div class="page">
+
+  <!-- Header -->
+  <header>
+    <div class="logo-badge"><span>🌿</span> AI Powered</div>
+    <h1>Identify any<br><em>Vegetable</em> instantly</h1>
+    <p>Upload a photo and our trained model will tell you exactly what it is — with nutritional info and cooking tips.</p>
+  </header>
+
+  <!-- Main card -->
+  <div class="card">
+
+    <!-- Upload zone -->
+    <div class="upload-zone">
+      <div class="drop-area" id="dropArea">
+        <input type="file" id="fileInput" accept="image/*">
+        <span class="drop-icon">📷</span>
+        <div class="drop-title">Drop your image here</div>
+        <div class="drop-sub">or click to browse · JPG, PNG, WEBP supported</div>
+      </div>
+
+      <!-- Image preview -->
+      <div class="preview-wrap" id="previewWrap">
+        <img id="previewImg" src="" alt="Preview">
+        <button class="preview-change" onclick="resetAll()">✕ Change</button>
+      </div>
+
+      <button class="predict-btn" id="predictBtn" onclick="predict()" disabled>
+        🔍 &nbsp;Identify Vegetable
+      </button>
+      <div class="error-box" id="errorBox"></div>
+    </div>
+
+    <!-- Supported classes -->
+    <div class="classes-section">
+      <div class="classes-title">Supported Vegetables (15 classes)</div>
+      <div class="chips" id="chipsContainer"></div>
+    </div>
+
+    <!-- Result section -->
+    <div class="result-section" id="resultSection">
+
+      <!-- Hero -->
+      <div class="result-hero" id="resultHero">
+        <div class="result-emoji-wrap" id="resultEmojiWrap">
+          <span id="resultEmoji"></span>
+        </div>
+        <div>
+          <div class="result-name" id="resultName"></div>
+          <div class="result-conf">
+            Confidence
+            <span class="conf-pill" id="confPill"></span>
+          </div>
+          <div class="conf-bar-wrap">
+            <div class="conf-bar" id="confBar"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Info grid -->
+      <div class="info-grid">
+        <div class="info-card">
+          <div class="info-card-label">🔥 Calories</div>
+          <div class="info-card-value" id="infoCalories"></div>
+        </div>
+        <div class="info-card">
+          <div class="info-card-label">🍳 Common Uses</div>
+          <div class="info-card-value" id="infoUses"></div>
+        </div>
+        <div class="info-card full">
+          <div class="info-card-label">💚 Health Benefits</div>
+          <div class="info-card-value" id="infoBenefits"></div>
+        </div>
+      </div>
+
+      <!-- Top 3 -->
+      <div class="top3-title">Model Confidence — Top 3</div>
+      <div class="top3-list" id="top3List"></div>
+
+      <button class="reset-btn" onclick="resetAll()">↩ &nbsp;Try Another Image</button>
+    </div>
+
+  </div><!-- /card -->
+
+  <footer>Powered by MobileNetV2 Transfer Learning &nbsp;·&nbsp; 15 Vegetable Classes &nbsp;·&nbsp; ~95% Accuracy</footer>
+</div>
+
+<script>
+  // ── Vegetable chips ────────────────────────────────────────────────────
+  const VEGGIES = [
+    '🫘 Bean','🥒 Bitter Gourd','🍶 Bottle Gourd','🍆 Brinjal',
+    '🥦 Broccoli','🥬 Cabbage','🫑 Capsicum','🥕 Carrot',
+    '🥦 Cauliflower','🥒 Cucumber','🍈 Papaya','🥔 Potato',
+    '🎃 Pumpkin','🌱 Radish','🍅 Tomato'
+  ];
+  const chips = document.getElementById('chipsContainer');
+  VEGGIES.forEach(v => {
+    const c = document.createElement('span');
+    c.className = 'chip'; c.textContent = v;
+    chips.appendChild(c);
+  });
+
+  // ── Drag & Drop ────────────────────────────────────────────────────────
+  const dropArea  = document.getElementById('dropArea');
+  const fileInput = document.getElementById('fileInput');
+  let   selectedFile = null;
+
+  dropArea.addEventListener('dragover', e => { e.preventDefault(); dropArea.classList.add('dragover'); });
+  dropArea.addEventListener('dragleave', () => dropArea.classList.remove('dragover'));
+  dropArea.addEventListener('drop', e => {
+    e.preventDefault();
+    dropArea.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) handleFile(file);
+  });
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) handleFile(fileInput.files[0]);
+  });
+
+  function handleFile(file) {
+    selectedFile = file;
+    const reader = new FileReader();
+    reader.onload = e => {
+      document.getElementById('previewImg').src = e.target.result;
+      document.getElementById('previewWrap').classList.add('visible');
+      document.getElementById('predictBtn').disabled = false;
+      document.getElementById('resultSection').classList.remove('visible');
+      document.getElementById('errorBox').classList.remove('visible');
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // ── Predict ────────────────────────────────────────────────────────────
+  async function predict() {
+    if (!selectedFile) return;
+
+    const btn     = document.getElementById('predictBtn');
+    const errBox  = document.getElementById('errorBox');
+    errBox.classList.remove('visible');
+    document.getElementById('loadingOverlay').classList.add('visible');
+    btn.disabled = true;
+
+    try {
+      const formData = new FormData();
+      formData.append('image', selectedFile);
+
+      const res  = await fetch('/predict/image', { method: 'POST', body: formData });
+      const data = await res.json();
+
+      if (!data.success) throw new Error(data.error || 'Prediction failed');
+      renderResult(data);
+
+    } catch (e) {
+      errBox.textContent = '⚠ ' + e.message;
+      errBox.classList.add('visible');
+    } finally {
+      document.getElementById('loadingOverlay').classList.remove('visible');
+      btn.disabled = false;
+    }
+  }
+
+  // ── Render result ──────────────────────────────────────────────────────
+  function renderResult(data) {
+    const color = data.color || '#2d6a4f';
+    const conf  = data.confidence;
+
+    // Hero
+    document.getElementById('resultEmoji').textContent     = data.emoji;
+    document.getElementById('resultEmojiWrap').style.background = color + '22';
+    document.getElementById('resultName').textContent      = data.prediction.replace('_', ' ');
+    document.getElementById('resultName').style.color      = color;
+
+    const pill = document.getElementById('confPill');
+    pill.textContent        = conf.toFixed(1) + '%';
+    pill.style.background   = color + '22';
+    pill.style.color        = color;
+
+    const bar = document.getElementById('confBar');
+    bar.style.background = color;
+    setTimeout(() => bar.style.width = conf + '%', 50);
+
+    // Info
+    document.getElementById('infoCalories').textContent = data.calories;
+    document.getElementById('infoUses').textContent     = data.uses;
+    document.getElementById('infoBenefits').textContent = data.benefits;
+
+    // Hero background tint
+    document.getElementById('resultHero').style.background = color + '0d';
+    document.getElementById('resultHero').style.borderColor = color + '44';
+
+    // Top 3 bars
+    const BAR_COLORS = [color, '#7cb34288', '#bdbdbd88'];
+    const top3 = document.getElementById('top3List');
+    top3.innerHTML = data.top3.map(([cls, pct], i) => `
+      <div class="top3-row">
+        <div class="top3-name">${cls.replace('_',' ')}</div>
+        <div class="top3-bar-wrap">
+          <div class="top3-bar" style="width:0%;background:${BAR_COLORS[i]}"
+               data-target="${pct}"></div>
+        </div>
+        <div class="top3-pct">${pct.toFixed(1)}%</div>
+      </div>
+    `).join('');
+
+    // Animate bars after render
+    setTimeout(() => {
+      document.querySelectorAll('.top3-bar').forEach(b => {
+        b.style.width = b.dataset.target + '%';
+      });
+    }, 80);
+
+    document.getElementById('resultSection').classList.add('visible');
+    document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  // ── Reset ──────────────────────────────────────────────────────────────
+  function resetAll() {
+    selectedFile = null;
+    document.getElementById('fileInput').value = '';
+    document.getElementById('previewImg').src  = '';
+    document.getElementById('previewWrap').classList.remove('visible');
+    document.getElementById('predictBtn').disabled = true;
+    document.getElementById('resultSection').classList.remove('visible');
+    document.getElementById('errorBox').classList.remove('visible');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+</script>
+</body>
+</html>

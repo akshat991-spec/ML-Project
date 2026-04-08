@@ -1,0 +1,19 @@
+{
+  "class_names": [
+    "Normal",
+    "Shoplifting"
+  ],
+  "frames_per_vid": 16,
+  "img_size": [
+    224,
+    224
+  ],
+  "feature_dim": 1280,
+  "cnn_test_acc": 0.8519362211227417,
+  "lstm_test_acc": 0.75,
+  "eff_test_acc": 0.7857142686843872,
+  "cnn_auc": 0.9308963341221406,
+  "lstm_auc": 0.7857142857142857,
+  "eff_auc": 0.7959183673469389,
+  "winner": "CNN Only"
+}

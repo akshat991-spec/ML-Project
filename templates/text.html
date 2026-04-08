@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Toxic Tweet Detector</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #f4f5f7;
+    --surface: #ffffff;
+    --border: #e2e5ea;
+    --accent: #e8183a;
+    --accent2: #f97316;
+    --text: #1a1d23;
+    --muted: #8890a0;
+    --safe: #059669;
+    --warn: #d97706;
+    --danger: #e8183a;
+    --lr-color: #2563eb;
+    --bert-color: #f97316;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: radial-gradient(circle, #d1d5db 1px, transparent 1px);
+    background-size: 28px 28px;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.45;
+  }
+
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 48px;
+    padding-bottom: 28px;
+    border-bottom: 1px solid var(--border);
+    animation: fadeDown 0.6s ease both;
+  }
+
+  .header-left { flex: 1; }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(232,24,58,0.08);
+    border: 1px solid rgba(232,24,58,0.25);
+    color: var(--accent);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    border-radius: 2px;
+    margin-bottom: 16px;
+  }
+
+  .badge::before {
+    content: '';
+    width: 5px; height: 5px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: pulse 1.5s infinite;
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(28px, 5vw, 46px);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -1px;
+  }
+
+  h1 span {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .subtitle {
+    margin-top: 10px;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+  .model-tags {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: flex-end;
+  }
+
+  .model-tag {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 12px;
+    border-radius: 3px;
+    font-size: 13px;
+    font-weight: 700;
+    font-family: 'Syne', sans-serif;
+    border: 1px solid;
+  }
+
+  .model-tag.lr   { color: var(--lr-color);   background: rgba(37,99,235,0.07);  border-color: rgba(37,99,235,0.25);  }
+  .model-tag.bert { color: var(--bert-color); background: rgba(249,115,22,0.07); border-color: rgba(249,115,22,0.25); }
+
+  .model-tag .acc {
+    font-size: 12px;
+    opacity: 0.7;
+    font-family: 'DM Mono', monospace;
+    font-weight: 400;
+  }
+
+  /* Input section */
+  .input-section { animation: fadeUp 0.7s 0.1s ease both; }
+
+  .section-label {
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  .tweet-wrapper {
+    position: relative;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    transition: border-color 0.3s, box-shadow 0.3s;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  }
+
+  .tweet-wrapper:focus-within {
+    border-color: rgba(232,24,58,0.4);
+    box-shadow: 0 0 0 3px rgba(232,24,58,0.07);
+  }
+
+  .tweet-icon {
+    position: absolute;
+    top: 16px; left: 16px;
+    color: var(--muted);
+    font-size: 16px;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 140px;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 15px;
+    line-height: 1.7;
+    padding: 16px 16px 16px 44px;
+    resize: vertical;
+  }
+
+  textarea::placeholder { color: var(--muted); }
+
+  .tweet-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    border-top: 1px solid var(--border);
+  }
+
+  .char-count { font-size: 11px; color: var(--muted); }
+  .char-count.warn   { color: var(--warn); }
+  .char-count.danger { color: var(--accent); }
+
+  .clear-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    padding: 6px 14px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .clear-btn:hover { border-color: var(--muted); color: var(--text); }
+
+  .analyze-btn {
+    width: 100%;
+    margin-top: 14px;
+    padding: 16px;
+    background: linear-gradient(135deg, var(--accent), #c92040);
+    border: none;
+    border-radius: 6px;
+    color: white;
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .analyze-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(232,24,58,0.25); }
+  .analyze-btn:active { transform: translateY(0); }
+  .analyze-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  .btn-inner { display: flex; align-items: center; justify-content: center; gap: 10px; }
+
+  /* Loading */
+  .loading-overlay {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 28px;
+    color: var(--muted);
+    font-size: 12px;
+    letter-spacing: 1px;
+  }
+  .loading-overlay.active { display: flex; }
+
+  .spinner {
+    width: 18px; height: 18px;
+    border: 2px solid #dde0e6;
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+
+  /* Divider */
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 28px 0;
+    color: var(--muted);
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .divider::before, .divider::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+  /* Results grid — side by side */
+  .results-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    justify-items: center;
+    display: none;
+    animation: fadeUp 0.5s ease both;
+  }
+  .results-grid.visible { display: grid; }
+
+  .result-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    border-top: 3px solid var(--border);
+    transition: border-top-color 0.3s;
+    max-width: 700px;
+    width: 100%;
+  }
+
+  .result-card.lr-card   { border-top-color: var(--lr-color);   }
+  .result-card.bert-card { border-top-color: var(--bert-color); }
+
+  .card-model-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Syne', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  .card-model-label .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .lr-card   .dot { background: var(--lr-color);   }
+  .bert-card .dot { background: var(--bert-color); }
+  .lr-card   .card-model-label { color: var(--lr-color);   }
+  .bert-card .card-model-label { color: var(--bert-color); }
+
+  /* Verdict */
+  .verdict-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .verdict-icon {
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .verdict-icon.toxic    { background: rgba(232,24,58,0.1);  }
+  .verdict-icon.nontoxic { background: rgba(5,150,105,0.1);  }
+
+  .verdict-label { font-size: 9px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 3px; }
+
+  .verdict-text {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px;
+    font-weight: 800;
+  }
+
+  .verdict-text.toxic    { color: var(--danger); }
+  .verdict-text.nontoxic { color: var(--safe);   }
+
+  /* Metric bars */
+  .metric { margin-bottom: 14px; }
+
+  .metric-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+    font-size: 10px;
+  }
+
+  .metric-name  { color: var(--muted); letter-spacing: 0.5px; text-transform: uppercase; }
+  .metric-value { font-weight: 500; color: var(--text); }
+
+  .bar-track {
+    height: 5px;
+    background: #e9eaee;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    width: 0;
+    transition: width 0.9s cubic-bezier(0.22,1,0.36,1);
+  }
+
+  .lr-card   .bar-fill { background: var(--lr-color);   }
+  .bert-card .bar-fill { background: var(--bert-color); }
+
+  .bar-fill.toxic-bar    { background: var(--danger) !important; }
+  .bar-fill.nontoxic-bar { background: var(--safe)   !important; }
+
+  /* Model accuracy chip */
+  .accuracy-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 16px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    border: 1px solid;
+  }
+
+  .lr-card   .accuracy-chip { color: var(--lr-color);   background: rgba(37,99,235,0.07);  border-color: rgba(37,99,235,0.2);  }
+  .bert-card .accuracy-chip { color: var(--bert-color); background: rgba(249,115,22,0.07); border-color: rgba(249,115,22,0.2); }
+
+  .agreement-badge {
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 14px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+  }
+
+  .agreement-badge.agree    { background: rgba(5,150,105,0.1);  color: var(--safe);   border: 1px solid rgba(5,150,105,0.3);  }
+  .agreement-badge.disagree { background: rgba(217,119,6,0.1);  color: var(--warn);   border: 1px solid rgba(217,119,6,0.3);  }
+
+  /* Examples */
+  .examples-section {
+    margin-top: 36px;
+    animation: fadeUp 0.7s 0.2s ease both;
+  }
+
+  .examples-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 12px;
+  }
+
+  .example-chip {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    line-height: 1.5;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+
+  .example-chip:hover {
+    border-color: rgba(232,24,58,0.3);
+    color: var(--text);
+    background: rgba(232,24,58,0.03);
+  }
+
+  .chip-tag {
+    display: block;
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    font-weight: 600;
+  }
+
+  .safe-tag  { color: var(--safe);   }
+  .toxic-tag { color: var(--accent); }
+
+  
+  .steps-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-top: 16px;
+  }
+
+  .step {
+    padding: 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  }
+
+  .step-num {
+    font-family: 'Syne', sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    color: #dde0e6;
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+
+  .step-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .step-desc { font-size: 11px; color: var(--muted); line-height: 1.6; }
+
+  /* Animations */
+  @keyframes fadeDown { from { opacity: 0; transform: translateY(-16px); } to { opacity: 1; transform: none; } }
+  @keyframes fadeUp   { from { opacity: 0; transform: translateY(16px);  } to { opacity: 1; transform: none; } }
+  @keyframes spin     { to { transform: rotate(360deg); } }
+  @keyframes pulse    { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  @media (max-width: 640px) {
+    .results-grid  { grid-template-columns: 1fr; }
+    .examples-grid { grid-template-columns: 1fr; }
+    .steps-row     { grid-template-columns: 1fr; }
+    .header        { flex-direction: column; gap: 16px; }
+    .model-tags    { align-items: flex-start; flex-direction: row; flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-left">
+      <h1>Toxic Tweet <span>Detector</span></h1>
+    </div>
+    <div class="model-tags">
+      <div class="model-tag lr">
+        <span>Logistic Regression</span>
+        <span class="acc">91.9% acc</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Input -->
+  <section class="input-section">
+    <p class="section-label">Input Tweet</p>
+    <div class="tweet-wrapper">
+      <span class="tweet-icon">✎</span>
+      <textarea id="tweetInput"
+        placeholder="Type or paste a tweet here to analyze..."
+        maxlength="280"
+        oninput="updateCharCount(this)"></textarea>
+      <div class="tweet-footer">
+        <span class="char-count" id="charCount">0 / 280</span>
+        <button class="clear-btn" onclick="clearAll()">Clear</button>
+      </div>
+    </div>
+    <button class="analyze-btn" id="analyzeBtn" onclick="analyze()">
+      <span class="btn-inner">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2.5">
+          <circle cx="11" cy="11" r="8"/>
+          <path d="m21 21-4.35-4.35"/>
+        </svg>
+        Analyze with the Model
+      </span>
+    </button>
+  </section>
+
+  <!-- Loading -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner"></div>
+    Running LR inference...
+  </div>
+
+  <!-- Divider -->
+  <div class="divider" id="resultDivider" style="display:none">
+    Model Results
+  </div>
+
+  <!-- Results — side by side -->
+  <div class="results-grid" id="resultsGrid">
+
+    <!-- LR Card -->
+    <div class="result-card lr-card">
+      <div class="card-model-label">
+        <span class="dot"></span>
+        Logistic Regression
+      </div>
+      <div class="verdict-row">
+        <div class="verdict-icon" id="lrIcon"></div>
+        <div>
+          <p class="verdict-label">Classification</p>
+          <p class="verdict-text" id="lrVerdict">—</p>
+        </div>
+      </div>
+      <div class="metric">
+        <div class="metric-header">
+          <span class="metric-name">Confidence</span>
+          <span class="metric-value" id="lrConf">—</span>
+        </div>
+        <div class="bar-track"><div class="bar-fill" id="lrConfBar"></div></div>
+      </div>
+      <div class="metric">
+        <div class="metric-header">
+          <span class="metric-name">Toxicity Score</span>
+          <span class="metric-value" id="lrTox">—</span>
+        </div>
+        <div class="bar-track"><div class="bar-fill toxic-bar" id="lrToxBar"></div></div>
+      </div>
+      <div class="accuracy-chip">
+        ✓ Model Accuracy: 91.9%
+      </div>
+    </div>
+  </div>
+
+  <!-- Examples -->
+  <section class="examples-section">
+    <p class="section-label">Try an Example</p>
+    <div class="examples-grid">
+      <div class="example-chip"
+           onclick="loadExample(this.dataset.text)"
+           data-text="Have a great day everyone! Spreading positivity!">
+        <span class="chip-tag safe-tag">✓ Safe</span>
+        "Have a great day everyone! Spreading positivity!"
+      </div>
+      <div class="example-chip"
+           onclick="loadExample(this.dataset.text)"
+           data-text="I hate you, you are worthless and should die">
+        <span class="chip-tag toxic-tag">⚠ Toxic</span>
+        "I hate you, you are worthless and should die"
+      </div>
+      <div class="example-chip"
+           onclick="loadExample(this.dataset.text)"
+           data-text="Just finished my morning run! Feeling amazing today">
+        <span class="chip-tag safe-tag">✓ Safe</span>
+        "Just finished my morning run! Feeling amazing today"
+      </div>
+      <div class="example-chip"
+           onclick="loadExample(this.dataset.text)"
+           data-text="You disgusting loser, nobody wants you around">
+        <span class="chip-tag toxic-tag">⚠ Toxic</span>
+        "You disgusting loser, nobody wants you around"
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- ONLY SCRIPT PART CHANGED — CSS SAME -->
+
+<script>
+  function updateCharCount(el) {
+    const count = el.value.length;
+    const span = document.getElementById('charCount');
+    span.textContent = `${count} / 280`;
+    span.className = 'char-count' +
+      (count > 240 ? ' danger' : count > 200 ? ' warn' : '');
+  }
+
+  function clearAll() {
+    document.getElementById('tweetInput').value = '';
+    updateCharCount(document.getElementById('tweetInput'));
+    hideResults();
+  }
+
+  function hideResults() {
+    document.getElementById('resultsGrid').className = 'results-grid';
+    document.getElementById('resultDivider').style.display = 'none';
+  }
+
+  function loadExample(text) {
+    document.getElementById('tweetInput').value = text;
+    updateCharCount(document.getElementById('tweetInput'));
+    hideResults();
+  }
+
+  async function analyze() {
+    const text = document.getElementById('tweetInput').value.trim();
+    if (!text) {
+      alert('Please enter a tweet to analyze.');
+      return;
+    }
+
+    document.getElementById('analyzeBtn').disabled = true;
+    document.getElementById('loadingOverlay').classList.add('active');
+    hideResults();
+
+    try {
+      const response = await fetch('http://127.0.0.1:5000/predict/text', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
+
+      const data = await response.json();
+
+      console.log("API Response:", data); // 🔍 DEBUG
+
+      showResults(data);
+
+    } catch (err) {
+      console.error(err);
+      alert('❌ Cannot connect to Flask server.\nMake sure app.py is running:\n  python app.py');
+    }
+
+    document.getElementById('analyzeBtn').disabled = false;
+    document.getElementById('loadingOverlay').classList.remove('active');
+  }
+
+  function showResults(data) {
+    document.getElementById('resultDivider').style.display = 'flex';
+    document.getElementById('resultsGrid').className = 'results-grid visible';
+
+    renderCard('lr', data.result);
+  }
+
+  function renderCard(model, data) {
+    if (!data || data.error) {
+      document.getElementById(`${model}Verdict`).textContent = 'Error';
+      document.getElementById(`${model}Conf`).textContent = '—';
+      document.getElementById(`${model}Tox`).textContent = '—';
+      return;
+    }
+
+    const isToxic = data.label === 'Toxic';
+    const icon = document.getElementById(`${model}Icon`);
+    const verdict = document.getElementById(`${model}Verdict`);
+
+    icon.textContent = isToxic ? '⚠' : '✓';
+    icon.className = 'verdict-icon ' + (isToxic ? 'toxic' : 'nontoxic');
+
+    verdict.textContent = data.label;
+    verdict.className = 'verdict-text ' + (isToxic ? 'toxic' : 'nontoxic');
+
+    document.getElementById(`${model}Conf`).textContent = data.confidence + '%';
+    document.getElementById(`${model}Tox`).textContent = data.label === 'Toxic' ? data.confidence + '%' : (100 - data.confidence) + '%';
+
+    setTimeout(() => {
+      document.getElementById(`${model}ConfBar`).style.width = data.confidence + '%';
+      const toxValue = data.label === 'Toxic' ? data.confidence : (100 - data.confidence);
+      document.getElementById(`${model}ToxBar`).style.width = toxValue + '%';
+    }, 100);
+  }
+</script>
+</body>
+</html>
