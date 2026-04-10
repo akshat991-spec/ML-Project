@@ -1,543 +1,717 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AQI Predictor — India</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  :root {
-    --bg:       #f5f4f0;
-    --surface:  #ffffff;
-    --border:   #e8e6e0;
-    --text:     #1a1a1a;
-    --muted:    #888880;
-    --accent:   #2563eb;
-    --radius:   12px;
-    --shadow:   0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
-  }
-html{
-  font-size: 110%;
-}
-  body {
-    font-family: 'DM Sans', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    padding: 2rem 1rem;
-    line-height: 1.6;
-  }
-
-  .wrapper { max-width: 760px; margin: 0 auto; }
-
-  header {
-    display: flex;
-    align-items: baseline;
-    gap: 0.75rem;
-    margin-bottom: 2.5rem;
-    padding-bottom: 1.5rem;
-    border-bottom: 1px solid var(--border);
-  }
-  header h1 { font-size: 2.4rem; font-weight: 800; letter-spacing: -0.02em; }
-  header span { font-size: 0.95rem; color: var(--muted); font-weight: 500; }
-
-  /* ── Card ── */
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 1.75rem;
-    box-shadow: var(--shadow);
-    margin-bottom: 1.25rem;
-  }
-  .card-title {
-    font-size: 0.7rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-bottom: 1.25rem;
-  }
-
-  /* ── Fields ── */
-  .fields { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.875rem; }
-  @media(max-width:560px){ .fields { grid-template-columns: 1fr; } }
-
-  label {
-    display: block;
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: var(--muted);
-    margin-bottom: 0.3rem;
-    letter-spacing: 0.02em;
-  }
-
-  input, select {
-    width: 100%;
-    padding: 0.6rem 0.75rem;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.875rem;
-    background: var(--bg);
-    color: var(--text);
-    transition: border-color 0.15s, box-shadow 0.15s;
-    outline: none;
-  }
-  input:focus, select:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(37,99,235,0.08);
-    background: #fff;
-  }
-
-  /* ── Context flags ── */
-  .section-label {
-    font-size: 0.68rem;
-    font-weight: 600;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin: 1.25rem 0 0.75rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
-
-  .flags { display: flex; gap: 1.5rem; flex-wrap: wrap; }
-  .checkbox-row { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; }
-  .checkbox-row input[type=checkbox] {
-    width: 15px; height: 15px;
-    border-radius: 4px;
-    accent-color: var(--accent);
-    cursor: pointer;
-  }
-
-  /* ── Auto-fetch notice ── */
-  .fetch-note {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.75rem;
-    padding: 0.875rem 1rem;
-    background: #eff6ff;
-    border: 1px solid #bfdbfe;
-    border-radius: 8px;
-    margin-bottom: 1.25rem;
-    font-size: 0.82rem;
-    color: #1d4ed8;
-    line-height: 1.5;
-  }
-  .fetch-note-icon { font-size: 1rem; flex-shrink: 0; margin-top: 0.05rem; }
-
-  /* ── Button ── */
-  .btn {
-    width: 100%;
-    padding: 0.8rem;
-    background: var(--text);
-    color: #fff;
-    border: none;
-    border-radius: 8px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.9rem;
-    font-weight: 500;
-    cursor: pointer;
-    margin-top: 1.25rem;
-    transition: opacity 0.15s, transform 0.1s;
-    letter-spacing: 0.01em;
-  }
-  .btn:hover   { opacity: 0.85; }
-  .btn:active  { transform: scale(0.99); }
-  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-  /* ── Error ── */
-  .error-msg {
-    display: none;
-    font-size: 0.85rem;
-    color: #dc2626;
-    padding: 0.75rem;
-    background: #fef2f2;
-    border-radius: 8px;
-    border: 1px solid #fecaca;
-    margin-top: 0.75rem;
-  }
-  .error-msg.visible { display: block; }
-
-  /* ── Spinner ── */
-  .spinner {
-    display: inline-block;
-    width: 15px; height: 15px;
-    border: 2px solid rgba(255,255,255,0.4);
-    border-top-color: #fff;
-    border-radius: 50%;
-    animation: spin 0.6s linear infinite;
-    vertical-align: middle;
-    margin-right: 0.4rem;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* ── Fetched data strip ── */
-  .fetched-strip {
-    display: none;
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-    gap: 0.6rem;
-    margin-bottom: 1.25rem;
-  }
-  .fetched-strip.visible { display: grid; }
-  .fetched-tile {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 0.6rem 0.75rem;
-  }
-  .fetched-tile-label {
-    font-size: 0.58rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-bottom: 0.2rem;
-  }
-  .fetched-tile-val {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.85rem;
-    color: var(--text);
-    font-weight: 500;
-  }
-
-  /* ── Result card ── */
-  .result-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 1.75rem;
-    box-shadow: var(--shadow);
-    display: none;
-    animation: fadeUp 0.3s ease;
-  }
-  .result-card.visible { display: block; }
-
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(8px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-
-  .result-top {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin-bottom: 1.25rem;
-    padding-bottom: 1.25rem;
-    border-bottom: 1px solid var(--border);
-  }
-  .result-icon  { font-size: 2.5rem; line-height: 1; }
-  .result-label { font-size: 1.4rem; font-weight: 600; letter-spacing: -0.02em; }
-  .result-meta  { font-size: 0.78rem; color: var(--muted); margin-top: 0.2rem; font-family: 'DM Mono', monospace; }
-  .result-dot   { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; margin-left: auto; }
-
-  .health-msg {
-    font-size: 0.875rem;
-    line-height: 1.65;
-    color: #444;
-    margin-bottom: 1.25rem;
-    padding: 0.875rem;
-    background: var(--bg);
-    border-radius: 8px;
-    border-left: 3px solid #2563eb;
-  }
-
-  .advice-title {
-    font-size: 0.68rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-bottom: 0.6rem;
-  }
-  .advice-list { list-style: none; display: flex; flex-direction: column; gap: 0.4rem; }
-  .advice-list li {
-    font-size: 0.85rem;
-    display: flex;
-    align-items: flex-start;
-    gap: 0.5rem;
-    color: #333;
-  }
-  .advice-list li::before { content: '→'; color: var(--muted); flex-shrink: 0; margin-top: 0.05rem; }
-
-  .proba-section { margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid var(--border); }
-  .proba-title {
-    font-size: 0.68rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-bottom: 0.75rem;
-  }
-  .proba-row {
-    display: grid;
-    grid-template-columns: 200px 1fr 44px;
-    align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 0.45rem;
-  }
-  .proba-name { font-size: 0.78rem; color: #555; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .proba-bar-wrap { background: var(--bg); border-radius: 4px; height: 6px; overflow: hidden; }
-  .proba-bar { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
-  .proba-val { font-size: 0.72rem; font-family: 'DM Mono', monospace; color: var(--muted); text-align: right; }
-
-  footer { text-align: center; margin-top: 3rem; font-size: 0.75rem; color: var(--muted); }
-</style>
-</head>
-<body>
-<div class="wrapper">
-
-  <header>
-    <h1>AQI Predictor</h1>
-    <span>India Air Quality Dashboard · ML Model</span>
-  </header>
-
-  <!-- ── INPUT FORM ── -->
-  <div class="card">
-    <div class="card-title">Enter Location & Date</div>
-
-    <div class="fetch-note">
-      <div class="fetch-note-icon">ℹ</div>
-      <div>Weather and air quality data (temperature, humidity, wind, PM2.5, NO₂, etc.) will be
-      fetched automatically from real-time APIs based on the city and date you enter.</div>
-    </div>
-
-    <div class="fields">
-      <div>
-        <label>City</label>
-        <select id="city">
-          <option value="">Select city...</option>
-          <option>Delhi</option><option>Mumbai</option><option>Bangalore</option>
-          <option>Chennai</option><option>Kolkata</option><option>Hyderabad</option>
-          <option>Pune</option><option>Ahmedabad</option><option>Jaipur</option>
-          <option>Lucknow</option><option>Kanpur</option><option>Surat</option>
-          <option>Indore</option><option>Bhopal</option><option>Nagpur</option>
-          <option>Visakhapatnam</option><option>Patna</option><option>Vadodara</option>
-          <option>Agra</option><option>Varanasi</option>
-        </select>
-      </div>
-
-      <div>
-        <label>State</label>
-        <select id="state">
-          <option value="">Select state...</option>
-          <option>Delhi</option><option>Maharashtra</option><option>Karnataka</option>
-          <option>Tamil Nadu</option><option>West Bengal</option><option>Telangana</option>
-          <option>Gujarat</option><option>Rajasthan</option><option>Uttar Pradesh</option>
-          <option>Madhya Pradesh</option><option>Bihar</option><option>Andhra Pradesh</option>
-        </select>
-      </div>
-
-      <div>
-        <label>Date</label>
-        <input type="date" id="date">
-      </div>
-    </div>
-
-    <!-- Optional context flags -->
-    <div class="section-label">Context Flags <span style="font-size:0.65rem;font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></div>
-    <div class="flags">
-      <div class="checkbox-row">
-        <input type="checkbox" id="festival_period">
-        <label style="margin:0;color:var(--text);">Festival Period</label>
-      </div>
-      <div class="checkbox-row">
-        <input type="checkbox" id="crop_burning">
-        <label style="margin:0;color:var(--text);">Crop Burning Season</label>
-      </div>
-      <div class="checkbox-row">
-        <input type="checkbox" id="temp_inversion">
-        <label style="margin:0;color:var(--text);">Temperature Inversion</label>
-      </div>
-    </div>
-
-    <button class="btn" id="predictBtn" onclick="predict()">Fetch Data & Predict AQI</button>
-    <div class="error-msg" id="errorMsg"></div>
-  </div>
-
-  <!-- ── FETCHED DATA DISPLAY ── -->
-  <div id="fetchedWrap">
-    <div class="card-title" id="fetchedTitle" style="display:none;font-size:0.7rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:0.75rem;">
-      Auto-fetched Values
-    </div>
-    <div class="fetched-strip" id="fetchedStrip"></div>
-  </div>
-
-  <!-- ── RESULT ── -->
-  <div class="result-card" id="resultCard">
-    <div class="card-title">Prediction Result</div>
-
-    <div class="result-top">
-      <div class="result-icon" id="resultIcon"></div>
-      <div>
-        <div class="result-label" id="resultLabel"></div>
-        <div class="result-meta" id="resultConf"></div>
-      </div>
-      <div class="result-dot" id="resultDot"></div>
-    </div>
-
-    <div class="health-msg" id="healthMsg"></div>
-
-    <div class="advice-title">Recommendations</div>
-    <ul class="advice-list" id="adviceList"></ul>
-
-    <div class="proba-section">
-      <div class="proba-title">Model Confidence per Category</div>
-      <div id="probaContainer"></div>
-    </div>
-  </div>
-
-  <footer>Powered by ML model &nbsp;·&nbsp; India AQI Dataset 2022–2025</footer>
-</div>
-
-<script>
-  document.getElementById('date').value = new Date().toISOString().split('T')[0];
-
-  const AQI_COLORS = {
-    'Good': '#2ecc71',
-    'Moderate': '#f1c40f',
-    'Unhealthy for Sensitive Groups': '#e67e22',
-    'Unhealthy': '#e74c3c',
-    'Very Unhealthy': '#8e44ad',
-    'Hazardous': '#2c3e50'
-  };
-
-  async function predict() {
-    const btn = document.getElementById('predictBtn');
-    const err = document.getElementById('errorMsg');
-    err.classList.remove('visible');
-
-    const city  = document.getElementById('city').value;
-    const state = document.getElementById('state').value;
-    const date  = document.getElementById('date').value;
-
-    if (!city || !state || !date) {
-      err.textContent = 'Please select City, State and Date.';
-      err.classList.add('visible');
-      return;
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AQI Predictor — India</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="/static/global.css">
+  <script src="/static/theme.js"></script>
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
     }
 
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span>Fetching data & predicting...';
+    :root {
+      --shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.04);
+    }
 
-    document.getElementById('resultCard').classList.remove('visible');
-    document.getElementById('fetchedStrip').classList.remove('visible');
-    document.getElementById('fetchedTitle').style.display = 'none';
+    html {
+      font-size: 110%;
+    }
 
-    const payload = {
-      city,
-      state,
-      date,
-      hour: new Date().getHours(),
-      festival_period: document.getElementById('festival_period').checked ? 1 : 0,
-      crop_burning: document.getElementById('crop_burning').checked ? 1 : 0,
-      temp_inversion: document.getElementById('temp_inversion').checked ? 1 : 0,
-    };
+    body {
+      padding-bottom: 2rem;
+      line-height: 1.6;
+    }
 
-    try {
-      const res  = await fetch('/predict/numeric', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+    .wrapper {
+      max-width: 760px;
+      margin: 0 auto;
+    }
 
-      const data = await res.json();
-      console.log("RESPONSE:", data); // 🔥 debug
+    header {
+      display: flex;
+      align-items: baseline;
+      gap: 0.75rem;
+      margin-bottom: 2.5rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+    }
 
-      if (!data.success) throw new Error(data.error || 'Prediction failed');
+    header h1 {
+      font-size: 2.4rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
 
-      if (data.fetched) {
-        showFetched(data.fetched);
+    header span {
+      font-size: 0.95rem;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 1.75rem;
+      box-shadow: var(--shadow);
+      margin-bottom: 1.25rem;
+    }
+
+    .card-title {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 1.25rem;
+    }
+
+    /* ── Fields ── */
+    .fields {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 0.875rem;
+    }
+
+    @media(max-width:560px) {
+      .fields {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--muted);
+      margin-bottom: 0.3rem;
+      letter-spacing: 0.02em;
+    }
+
+    /* Global input/select styles are now applied securely via global.css */
+
+    /* ── Context flags ── */
+    .section-label {
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 1.25rem 0 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .flags {
+      display: flex;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.85rem;
+    }
+
+    .checkbox-row input[type=checkbox] {
+      width: 15px;
+      height: 15px;
+      border-radius: 4px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    /* ── Auto-fetch notice ── */
+    .fetch-note {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      padding: 0.875rem 1rem;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 8px;
+      margin-bottom: 1.25rem;
+      font-size: 0.82rem;
+      color: #1d4ed8;
+      line-height: 1.5;
+    }
+
+    .fetch-note-icon {
+      font-size: 1rem;
+      flex-shrink: 0;
+      margin-top: 0.05rem;
+    }
+
+    /* ── Button ── */
+    .btn {
+      width: 100%;
+      padding: 0.8rem;
+      background: var(--text);
+      color: var(--bg);
+      border: none;
+      border-radius: 8px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      margin-top: 1.25rem;
+      transition: opacity 0.15s, transform 0.1s;
+      letter-spacing: 0.01em;
+    }
+
+    .btn:hover {
+      opacity: 0.85;
+    }
+
+    .btn:active {
+      transform: scale(0.99);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* ── Error ── */
+    .error-msg {
+      display: none;
+      font-size: 0.85rem;
+      color: #dc2626;
+      padding: 0.75rem;
+      background: #fef2f2;
+      border-radius: 8px;
+      border: 1px solid #fecaca;
+      margin-top: 0.75rem;
+    }
+
+    .error-msg.visible {
+      display: block;
+    }
+
+    /* ── Spinner ── */
+    .spinner {
+      display: inline-block;
+      width: 15px;
+      height: 15px;
+      border: 2px solid rgba(255, 255, 255, 0.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      vertical-align: middle;
+      margin-right: 0.4rem;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* ── Fetched data strip ── */
+    .fetched-strip {
+      display: none;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 0.6rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .fetched-strip.visible {
+      display: grid;
+    }
+
+    .fetched-tile {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.6rem 0.75rem;
+    }
+
+    .fetched-tile-label {
+      font-size: 0.58rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.2rem;
+    }
+
+    .fetched-tile-val {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    /* ── Result card ── */
+    .result-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 1.75rem;
+      box-shadow: var(--shadow);
+      display: none;
+      animation: fadeUp 0.3s ease;
+    }
+
+    .result-card.visible {
+      display: block;
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
       }
 
-      renderResult(data);
-
-    } catch (e) {
-      err.textContent = 'Error: ' + e.message;
-      err.classList.add('visible');
-    } finally {
-      btn.disabled = false;
-      btn.innerHTML = 'Fetch Data & Predict AQI';
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
-  }
 
-  function showFetched(f) {
-    const labels = {
-      temperature: 'Temp (°C)',
-      humidity: 'Humidity (%)',
-      wind_speed: 'Wind (km/h)',
-      pressure: 'Pressure (hPa)',
-      pm25: 'PM2.5 µg/m³',
-      pm10: 'PM10 µg/m³',
-      no2: 'NO₂ µg/m³',
-      o3: 'O₃ µg/m³',
-      so2: 'SO₂ µg/m³',
-      co: 'CO µg/m³',
+    .result-top {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+      padding-bottom: 1.25rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .result-icon {
+      font-size: 2.5rem;
+      line-height: 1;
+    }
+
+    .result-label {
+      font-size: 1.4rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    .result-meta {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-top: 0.2rem;
+      font-family: 'DM Mono', monospace;
+    }
+
+    .result-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-left: auto;
+    }
+
+    .health-msg {
+      font-size: 0.875rem;
+      line-height: 1.65;
+      color: #444;
+      margin-bottom: 1.25rem;
+      padding: 0.875rem;
+      background: var(--bg);
+      border-radius: 8px;
+      border-left: 3px solid #2563eb;
+    }
+
+    .advice-title {
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.6rem;
+    }
+
+    .advice-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .advice-list li {
+      font-size: 0.85rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      color: #333;
+    }
+
+    .advice-list li::before {
+      content: '→';
+      color: var(--muted);
+      flex-shrink: 0;
+      margin-top: 0.05rem;
+    }
+
+    .proba-section {
+      margin-top: 1.25rem;
+      padding-top: 1.25rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .proba-title {
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.75rem;
+    }
+
+    .proba-row {
+      display: grid;
+      grid-template-columns: 200px 1fr 44px;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.45rem;
+    }
+
+    .proba-name {
+      font-size: 0.78rem;
+      color: #555;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .proba-bar-wrap {
+      background: var(--bg);
+      border-radius: 4px;
+      height: 6px;
+      overflow: hidden;
+    }
+
+    .proba-bar {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.6s ease;
+    }
+
+    .proba-val {
+      font-size: 0.72rem;
+      font-family: 'DM Mono', monospace;
+      color: var(--muted);
+      text-align: right;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 3rem;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+
+<body>
+  <nav class="global-nav">
+    <div class="nav-left">
+      <a href="/" class="nav-name">
+        <div style="width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);">
+        </div>
+        NextZen AI
+      </a>
+    </div>
+    <div style="display: flex; align-items: center; gap: 1rem;">
+      <button id="theme-toggle" class="theme-toggle" aria-label="Toggle Theme"></button>
+    </div>
+  </nav>
+  <div class="wrapper" style="margin-top: 2rem;">
+
+    <header>
+      <h1>AQI Predictor</h1>
+      <span>India Air Quality Dashboard · ML Model</span>
+    </header>
+
+    <!-- ── INPUT FORM ── -->
+    <div class="card">
+      <div class="card-title">Enter Location & Date</div>
+
+      <div class="fetch-note">
+        <div class="fetch-note-icon">ℹ</div>
+        <div>Weather and air quality data (temperature, humidity, wind, PM2.5, NO₂, etc.) will be
+          fetched automatically from real-time APIs based on the city and date you enter.</div>
+      </div>
+
+      <div class="fields">
+        <div>
+          <label>City</label>
+          <select id="city">
+            <option value="">Select city...</option>
+            <option>Delhi</option>
+            <option>Mumbai</option>
+            <option>Bangalore</option>
+            <option>Chennai</option>
+            <option>Kolkata</option>
+            <option>Hyderabad</option>
+            <option>Pune</option>
+            <option>Ahmedabad</option>
+            <option>Jaipur</option>
+            <option>Lucknow</option>
+            <option>Kanpur</option>
+            <option>Surat</option>
+            <option>Indore</option>
+            <option>Bhopal</option>
+            <option>Nagpur</option>
+            <option>Visakhapatnam</option>
+            <option>Patna</option>
+            <option>Vadodara</option>
+            <option>Agra</option>
+            <option>Varanasi</option>
+          </select>
+        </div>
+
+        <div>
+          <label>State</label>
+          <select id="state">
+            <option value="">Select state...</option>
+            <option>Delhi</option>
+            <option>Maharashtra</option>
+            <option>Karnataka</option>
+            <option>Tamil Nadu</option>
+            <option>West Bengal</option>
+            <option>Telangana</option>
+            <option>Gujarat</option>
+            <option>Rajasthan</option>
+            <option>Uttar Pradesh</option>
+            <option>Madhya Pradesh</option>
+            <option>Bihar</option>
+            <option>Andhra Pradesh</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Date</label>
+          <input type="date" id="date">
+        </div>
+      </div>
+
+      <!-- Optional context flags -->
+      <div class="section-label">Context Flags <span
+          style="font-size:0.65rem;font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></div>
+      <div class="flags">
+        <div class="checkbox-row">
+          <input type="checkbox" id="festival_period">
+          <label style="margin:0;color:var(--text);">Festival Period</label>
+        </div>
+        <div class="checkbox-row">
+          <input type="checkbox" id="crop_burning">
+          <label style="margin:0;color:var(--text);">Crop Burning Season</label>
+        </div>
+        <div class="checkbox-row">
+          <input type="checkbox" id="temp_inversion">
+          <label style="margin:0;color:var(--text);">Temperature Inversion</label>
+        </div>
+      </div>
+
+      <button class="btn" id="predictBtn" onclick="predict()">Fetch Data & Predict AQI</button>
+      <div class="error-msg" id="errorMsg"></div>
+    </div>
+
+    <!-- ── FETCHED DATA DISPLAY ── -->
+    <div id="fetchedWrap">
+      <div class="card-title" id="fetchedTitle"
+        style="display:none;font-size:0.7rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:0.75rem;">
+        Auto-fetched Values
+      </div>
+      <div class="fetched-strip" id="fetchedStrip"></div>
+    </div>
+
+    <!-- ── RESULT ── -->
+    <div class="result-card" id="resultCard">
+      <div class="card-title">Prediction Result</div>
+
+      <div class="result-top">
+        <div class="result-icon" id="resultIcon"></div>
+        <div>
+          <div class="result-label" id="resultLabel"></div>
+          <div class="result-meta" id="resultConf"></div>
+        </div>
+        <div class="result-dot" id="resultDot"></div>
+      </div>
+
+      <div class="health-msg" id="healthMsg"></div>
+
+      <div class="advice-title">Recommendations</div>
+      <ul class="advice-list" id="adviceList"></ul>
+
+      <div class="proba-section">
+        <div class="proba-title">Model Confidence per Category</div>
+        <div id="probaContainer"></div>
+      </div>
+    </div>
+
+    <footer>Powered by ML model &nbsp;·&nbsp; India AQI Dataset 2022–2026</footer>
+  </div>
+
+  <script>
+    document.getElementById('date').value = new Date().toISOString().split('T')[0];
+
+    const AQI_COLORS = {
+      'Good': '#2ecc71',
+      'Moderate': '#f1c40f',
+      'Unhealthy for Sensitive Groups': '#e67e22',
+      'Unhealthy': '#e74c3c',
+      'Very Unhealthy': '#8e44ad',
+      'Hazardous': '#2c3e50'
     };
 
-    const strip = document.getElementById('fetchedStrip');
-    strip.innerHTML = Object.entries(labels).map(([key, label]) =>
-      (f[key] !== undefined && f[key] !== null) ? `
+    async function predict() {
+      const btn = document.getElementById('predictBtn');
+      const err = document.getElementById('errorMsg');
+      err.classList.remove('visible');
+
+      const city = document.getElementById('city').value;
+      const state = document.getElementById('state').value;
+      const date = document.getElementById('date').value;
+
+      if (!city || !state || !date) {
+        err.textContent = 'Please select City, State and Date.';
+        err.classList.add('visible');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>Fetching data & predicting...';
+
+      document.getElementById('resultCard').classList.remove('visible');
+      document.getElementById('fetchedStrip').classList.remove('visible');
+      document.getElementById('fetchedTitle').style.display = 'none';
+
+      const payload = {
+        city,
+        state,
+        date,
+        hour: new Date().getHours(),
+        festival_period: document.getElementById('festival_period').checked ? 1 : 0,
+        crop_burning: document.getElementById('crop_burning').checked ? 1 : 0,
+        temp_inversion: document.getElementById('temp_inversion').checked ? 1 : 0,
+      };
+
+      try {
+        const res = await fetch('/predict/numeric', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        console.log("RESPONSE:", data); // 🔥 debug
+
+        if (!data.success) throw new Error(data.error || 'Prediction failed');
+
+        if (data.fetched) {
+          showFetched(data.fetched);
+        }
+
+        renderResult(data);
+
+      } catch (e) {
+        err.textContent = 'Error: ' + e.message;
+        err.classList.add('visible');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Fetch Data & Predict AQI';
+      }
+    }
+
+    function showFetched(f) {
+      const labels = {
+        temperature: 'Temp (°C)',
+        humidity: 'Humidity (%)',
+        wind_speed: 'Wind (km/h)',
+        pressure: 'Pressure (hPa)',
+        pm25: 'PM2.5 µg/m³',
+        pm10: 'PM10 µg/m³',
+        no2: 'NO₂ µg/m³',
+        o3: 'O₃ µg/m³',
+        so2: 'SO₂ µg/m³',
+        co: 'CO µg/m³',
+      };
+
+      const strip = document.getElementById('fetchedStrip');
+      strip.innerHTML = Object.entries(labels).map(([key, label]) =>
+        (f[key] !== undefined && f[key] !== null) ? `
         <div class="fetched-tile">
           <div class="fetched-tile-label">${label}</div>
           <div class="fetched-tile-val">${f[key]}</div>
         </div>` : ''
-    ).join('');
+      ).join('');
 
-    strip.classList.add('visible');
-    document.getElementById('fetchedTitle').style.display = 'block';
-  }
+      strip.classList.add('visible');
+      document.getElementById('fetchedTitle').style.display = 'block';
+    }
 
-  function renderResult(data) {
-    const color = data.color || AQI_COLORS[data.category] || '#888';
+    function renderResult(data) {
+      const color = data.color || AQI_COLORS[data.category] || '#888';
 
-    document.getElementById('resultIcon').textContent  = data.icon || "🌫";
-    function formatCategory(cat) {
-      if (!cat) return "Unknown";
+      document.getElementById('resultIcon').textContent = data.icon || "🌫";
+      function formatCategory(cat) {
+        if (!cat) return "Unknown";
 
-      return cat
-        .replace(/_/g, " ") // replace underscores
-        .replace("Sensitive", "for Sensitive Groups"); // fix wording
+        return cat
+          .replace(/_/g, " ") // replace underscores
+          .replace("Sensitive", "for Sensitive Groups"); // fix wording
       }
 
-document.getElementById('resultLabel').textContent = formatCategory(data.category);
-    // ✅ SAFE CONFIDENCE
-    document.getElementById('resultConf').textContent =
-  `${data.confidence || 0}% confidence · ${data.city || "Unknown"}, ${data.state || "Unknown"} · ${data.date || ""}`;
-    document.getElementById('resultDot').style.background = color;
+      document.getElementById('resultLabel').textContent = formatCategory(data.category);
+      // ✅ SAFE CONFIDENCE
+      document.getElementById('resultConf').textContent =
+        `${data.confidence || 0}% confidence · ${data.city || "Unknown"}, ${data.state || "Unknown"} · ${data.date || ""}`;
+      document.getElementById('resultDot').style.background = color;
 
-    const hm = document.getElementById('healthMsg');
-    hm.textContent = data.health || "No health info available";
-    hm.style.borderLeftColor = color;
+      const hm = document.getElementById('healthMsg');
+      hm.textContent = data.health || "No health info available";
+      hm.style.borderLeftColor = color;
 
-    document.getElementById('adviceList').innerHTML =
-      (data.advice || []).map(a => `<li>${a}</li>`).join('');
+      document.getElementById('adviceList').innerHTML =
+        (data.advice || []).map(a => `<li>${a}</li>`).join('');
 
-    // ✅ SAFE PROBABILITIES (MAIN FIX)
-    const probs = data.probabilities || {};
+      // ✅ SAFE PROBABILITIES (MAIN FIX)
+      const probs = data.probabilities || {};
 
-    const sorted = Object.keys(probs).length
-    ? Object.entries(probs).sort((a, b) => b[1] - a[1])
-    : [];
-    document.getElementById('probaContainer').innerHTML =
-    sorted.length ? sorted.map(([cls, pct]) => `
+      const sorted = Object.keys(probs).length
+        ? Object.entries(probs).sort((a, b) => b[1] - a[1])
+        : [];
+      document.getElementById('probaContainer').innerHTML =
+        sorted.length ? sorted.map(([cls, pct]) => `
     <div class="proba-row">
       <div class="proba-name">${cls}</div>
       <div class="proba-bar-wrap">
-        <div class="proba-bar" style="width:${pct}%;background:${AQI_COLORS[cls]||'#888'}"></div>
+        <div class="proba-bar" style="width:${pct}%;background:${AQI_COLORS[cls] || '#888'}"></div>
       </div>
       <div class="proba-val">${pct}%</div>
     </div>
   `).join('')
-  : `<div style="font-size:0.8rem;color:#888;">No probability data</div>`;
-    document.getElementById('resultCard').classList.add('visible');
-    document.getElementById('resultCard').scrollIntoView({ behavior: 'smooth' });
-  }
-</script>
+          : `<div style="font-size:0.8rem;color:#888;">No probability data</div>`;
+      document.getElementById('resultCard').classList.add('visible');
+      document.getElementById('resultCard').scrollIntoView({ behavior: 'smooth' });
+    }
+  </script>
 </body>
+
 </html>

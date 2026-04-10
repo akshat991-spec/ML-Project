@@ -9,6 +9,8 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap"
     rel="stylesheet" />
+  <link rel="stylesheet" href="/static/global.css">
+  <script src="/static/theme.js"></script>
   <style>
     *,
     *::before,
@@ -19,34 +21,24 @@
     }
 
     :root {
-      --bg: #f4f5f9;
-      --bg2: #ffffff;
-      --bg3: #eef0f6;
-      --border: rgba(0, 0, 0, 0.08);
-      --border2: rgba(0, 0, 0, 0.12);
-      --text: #1a1d27;
-      --muted: #6b7280;
-      --accent: #5b5ef4;
       --accent-bg: rgba(91, 94, 244, 0.08);
       --accent-border: rgba(91, 94, 244, 0.2);
       --male: #2563eb;
       --female: #db2777;
       --success: #059669;
-      --sans: 'Inter', sans-serif;
-      --display: 'Plus Jakarta Sans', sans-serif;
     }
 
     body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: var(--sans);
       font-size: 14px;
       font-weight: 400;
       line-height: 1.6;
-      min-height: 100vh;
+    }
+
+    .wrapper {
       display: flex;
       flex-direction: column;
       align-items: center;
+      width: 100%;
     }
 
     header {
@@ -703,100 +695,110 @@
 </head>
 
 <body>
-
-  <header>
-    <div class="header-badge">ML · Audio Analysis</div>
-    <h1>Voice Gender Recognition</h1>
-    <p class="subtitle">Upload an audio file — MFCC + Spectral features</p>
-  </header>
-
-  <main>
-
-    <div class="upload-card">
-      <div class="drop-zone" id="dropZone">
-        <input type="file" id="audioInput" accept=".wav,.mp3,.ogg,.flac,.m4a" />
-        <div class="waveform-icon">
-          <span></span><span></span><span></span><span></span>
-          <span></span><span></span><span></span><span></span>
+  <nav class="global-nav">
+    <div class="nav-left">
+      <a href="/" class="nav-name">
+        <div style="width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);">
         </div>
-        <div class="drop-text-main">Drop your audio file here</div>
-        <div class="drop-text-sub">WAV · MP3 · OGG · FLAC · M4A &nbsp;·&nbsp; Max 16 MB</div>
-      </div>
-      <div class="loading-bar" id="loadingBar">
-        <div class="loading-bar-fill"></div>
-      </div>
-      <div class="file-info-bar">
-        <span class="file-name" id="fileName" style="color:var(--muted);font-weight:400">No file selected</span>
-        <div style="display:flex;gap:8px;align-items:center">
-          <div class="models-info">
-            <span class="model-pill">Best Model Selected Automatically</span>
+        NextZen AI
+      </a>
+    </div>
+    <div style="display: flex; align-items: center; gap: 1rem;">
+      <button id="theme-toggle" class="theme-toggle" aria-label="Toggle Theme"></button>
+    </div>
+  </nav>
+  <div class="wrapper">
+    <header>
+      <div class="header-badge">ML · Audio Analysis</div>
+      <h1>Voice Gender Recognition</h1>
+      <p class="subtitle">Upload an audio file — MFCC + Spectral features</p>
+    </header>
+
+    <main>
+
+      <div class="upload-card">
+        <div class="drop-zone" id="dropZone">
+          <input type="file" id="audioInput" accept=".wav,.mp3,.ogg,.flac,.m4a" />
+          <div class="waveform-icon">
+            <span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span>
           </div>
-          <button class="analyze-btn" id="analyzeBtn" disabled onclick="analyze()">Analyze</button>
+          <div class="drop-text-main">Drop your audio file here</div>
+          <div class="drop-text-sub">WAV · MP3 · OGG · FLAC · M4A &nbsp;·&nbsp; Max 16 MB</div>
         </div>
-      </div>
-    </div>
-
-    <div class="error-card" id="errorCard"></div>
-
-    <div class="audio-player-section" id="audioPlayerSection">
-      <div class="waveform-container">
-        <canvas id="waveformCanvas"></canvas>
-      </div>
-      <div class="audio-controls">
-        <button class="play-btn" id="playBtn" onclick="toggleAudio()">
-          <span id="playBtnText">▶ Play</span>
-        </button>
-        <div class="progress-bar" id="progressBar">
-          <div class="progress-fill" id="progressFill"></div>
+        <div class="loading-bar" id="loadingBar">
+          <div class="loading-bar-fill"></div>
         </div>
-        <div class="audio-time">
-          <span id="currentTime">0:00</span> / <span id="duration">0:00</span>
-        </div>
-      </div>
-    </div>
-
-    <audio id="audioElement" style="display:none;"></audio>
-  
-  <div>
-  <div id="resultsSection" class="results-section">
-      <div class="section-label">Final prediction</div>
-      <div class="ensemble-card">
-        <div class="ensemble-prediction">
-          <div class="gender-label" id="ensembleGender">—</div>
-          <div class="confidence-text">Confidence: <span class="confidence-val" id="ensembleConf">—</span></div>
-        </div>
-        <div class="ensemble-bars">
-          <div class="prob-row">
-            <div class="prob-label">Male</div>
-            <div class="prob-bar-bg">
-              <div class="prob-bar-fill male-fill" id="maleBar" style="width:0%"></div>
+        <div class="file-info-bar">
+          <span class="file-name" id="fileName" style="color:var(--muted);font-weight:400">No file selected</span>
+          <div style="display:flex;gap:8px;align-items:center">
+            <div class="models-info">
+              <span class="model-pill">Best Model Selected Automatically</span>
             </div>
-            <div class="prob-pct" id="malePct">0%</div>
-          </div>
-          <div class="prob-row">
-            <div class="prob-label">Female</div>
-            <div class="prob-bar-bg">
-              <div class="prob-bar-fill female-fill" id="femaleBar" style="width:0%"></div>
-            </div>
-            <div class="prob-pct" id="femalePct">0%</div>
+            <button class="analyze-btn" id="analyzeBtn" disabled onclick="analyze()">Analyze</button>
           </div>
         </div>
       </div>
-    </div>
-    </div>
 
-    <div>
-      <div class="section-label">Extracted audio features</div>
-      <div class="feature-card">
-        <div class="feature-grid" id="featureGrid"></div>
+      <div class="error-card" id="errorCard"></div>
+
+      <div class="audio-player-section" id="audioPlayerSection">
+        <div class="waveform-container">
+          <canvas id="waveformCanvas"></canvas>
+        </div>
+        <div class="audio-controls">
+          <button class="play-btn" id="playBtn" onclick="toggleAudio()">
+            <span id="playBtnText">▶ Play</span>
+          </button>
+          <div class="progress-bar" id="progressBar">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+          <div class="audio-time">
+            <span id="currentTime">0:00</span> / <span id="duration">0:00</span>
+          </div>
+        </div>
       </div>
-    </div>
 
-    </div>
-  </main>
+      <audio id="audioElement" style="display:none;"></audio>
 
-  <footer>Gender Recognition GUI</footer>
+      <div>
+        <div id="resultsSection" class="results-section">
+          <div class="section-label">Final prediction</div>
+          <div class="ensemble-card">
+            <div class="ensemble-prediction">
+              <div class="gender-label" id="ensembleGender">—</div>
+              <div class="confidence-text">Confidence: <span class="confidence-val" id="ensembleConf">—</span></div>
+            </div>
+            <div class="ensemble-bars">
+              <div class="prob-row">
+                <div class="prob-label">Male</div>
+                <div class="prob-bar-bg">
+                  <div class="prob-bar-fill male-fill" id="maleBar" style="width:0%"></div>
+                </div>
+                <div class="prob-pct" id="malePct">0%</div>
+              </div>
+              <div class="prob-row">
+                <div class="prob-label">Female</div>
+                <div class="prob-bar-bg">
+                  <div class="prob-bar-fill female-fill" id="femaleBar" style="width:0%"></div>
+                </div>
+                <div class="prob-pct" id="femalePct">0%</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
+      <div>
+        <div class="section-label">Extracted audio features</div>
+        <div class="feature-card">
+          <div class="feature-grid" id="featureGrid"></div>
+        </div>
+      </div>
+    </main>
+
+    <footer>Gender Recognition GUI</footer>
+  </div>
   <script>
     const input = document.getElementById('audioInput');
     const dropZone = document.getElementById('dropZone');
@@ -874,71 +876,71 @@
     }
 
     async function drawWaveform(audioBuffer) {
-  const width  = canvas.width;
-  const height = canvas.height;
-  const data   = audioBuffer.getChannelData(0);
+      const width = canvas.width;
+      const height = canvas.height;
+      const data = audioBuffer.getChannelData(0);
 
-  // Clear
-  canvasCtx.clearRect(0, 0, width, height);
-  canvasCtx.fillStyle = '#eef0f8';
-  canvasCtx.fillRect(0, 0, width, height);
+      // Clear
+      canvasCtx.clearRect(0, 0, width, height);
+      canvasCtx.fillStyle = '#eef0f8';
+      canvasCtx.fillRect(0, 0, width, height);
 
-  const barWidth  = 2.5;
-  const barGap    = 1.5;
-  const totalBars = Math.floor(width / (barWidth + barGap));
-  const step      = Math.floor(data.length / totalBars);
-  const amp       = height / 2;
+      const barWidth = 2.5;
+      const barGap = 1.5;
+      const totalBars = Math.floor(width / (barWidth + barGap));
+      const step = Math.floor(data.length / totalBars);
+      const amp = height / 2;
 
-  // ── Compute RMS per bar ────────────────────────────────────────────────
-  const rmsValues = [];
-  for (let i = 0; i < totalBars; i++) {
-    let sum = 0;
-    for (let j = 0; j < step; j++) {
-      const val = data[i * step + j] || 0;
-      sum += val * val;
+      // ── Compute RMS per bar ────────────────────────────────────────────────
+      const rmsValues = [];
+      for (let i = 0; i < totalBars; i++) {
+        let sum = 0;
+        for (let j = 0; j < step; j++) {
+          const val = data[i * step + j] || 0;
+          sum += val * val;
+        }
+        rmsValues.push(Math.sqrt(sum / step));
+      }
+
+      // Normalize RMS to 0–1
+      const maxRms = Math.max(...rmsValues, 0.001);
+      const normRms = rmsValues.map(v => v / maxRms);
+
+      const PITCH_THRESHOLD = 0.45;
+
+      // ── Draw bars ──────────────────────────────────────────────────────────
+      for (let i = 0; i < totalBars; i++) {
+        // Peak amplitude for bar height
+        let peak = 0;
+        for (let j = 0; j < step; j++) {
+          const val = Math.abs(data[i * step + j] || 0);
+          if (val > peak) peak = val;
+        }
+
+        const barHeight = Math.max(peak * height * 1.4, 4);
+        const x = i * (barWidth + barGap);
+        const y = amp - barHeight / 2;
+        const radius = barWidth / 2;
+
+        const isPitch = normRms[i] > PITCH_THRESHOLD;
+
+        if (isPitch) {
+          canvasCtx.shadowColor = 'rgba(91, 94, 244, 0.55)';
+          canvasCtx.shadowBlur = 8;
+          canvasCtx.fillStyle = '#5b5ef4';
+        } else {
+          canvasCtx.shadowBlur = 0;
+          const opacity = 0.35 + normRms[i] * 0.40;
+          canvasCtx.fillStyle = `rgba(55, 58, 140, ${opacity})`;
+        }
+
+        canvasCtx.beginPath();
+        canvasCtx.roundRect(x, y, barWidth, barHeight, radius);
+        canvasCtx.fill();
+      }
+
+      canvasCtx.shadowBlur = 0;
     }
-    rmsValues.push(Math.sqrt(sum / step));
-  }
-
-  // Normalize RMS to 0–1
-  const maxRms  = Math.max(...rmsValues, 0.001);
-  const normRms = rmsValues.map(v => v / maxRms);
-
-  const PITCH_THRESHOLD = 0.45;
-
-  // ── Draw bars ──────────────────────────────────────────────────────────
-  for (let i = 0; i < totalBars; i++) {
-    // Peak amplitude for bar height
-    let peak = 0;
-    for (let j = 0; j < step; j++) {
-      const val = Math.abs(data[i * step + j] || 0);
-      if (val > peak) peak = val;
-    }
-
-    const barHeight = Math.max(peak * height * 1.4, 4);
-    const x        = i * (barWidth + barGap);
-    const y        = amp - barHeight / 2;
-    const radius   = barWidth / 2;
-
-    const isPitch = normRms[i] > PITCH_THRESHOLD;
-
-    if (isPitch) {
-      canvasCtx.shadowColor = 'rgba(91, 94, 244, 0.55)';
-      canvasCtx.shadowBlur  = 8;
-      canvasCtx.fillStyle   = '#5b5ef4';
-    } else {
-      canvasCtx.shadowBlur  = 0;
-      const opacity = 0.35 + normRms[i] * 0.40;
-      canvasCtx.fillStyle   = `rgba(55, 58, 140, ${opacity})`;
-    }
-
-    canvasCtx.beginPath();
-    canvasCtx.roundRect(x, y, barWidth, barHeight, radius);
-    canvasCtx.fill();
-  }
-
-  canvasCtx.shadowBlur = 0;
-}
 
     async function selectFile(file) {
       selectedFile = file;
@@ -965,7 +967,7 @@
         audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
         // Resize canvas to match the container
         canvas.width = canvas.offsetWidth;
-        canvas.height = 140; 
+        canvas.height = 140;
         drawWaveform(audioBuffer);
       } catch (err) {
         console.error('Error processing audio:', err);
@@ -1046,9 +1048,9 @@
 
       document.getElementById('resultsSection').classList.add('visible');
       document.getElementById('resultsSection').scrollIntoView({
-      behavior: 'smooth',
-      block: 'start'
-    });
+        behavior: 'smooth',
+        block: 'start'
+      });
     }
   </script>
 </body>
